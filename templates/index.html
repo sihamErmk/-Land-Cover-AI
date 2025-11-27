@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Land Cover Segmentation</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+        font-family: 'Poppins', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+        min-height: 100vh;
+        color: #2d3748;
+    }
+
+    .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding: 20px;
+    }
+
+    .header h1 {
+        font-size: 2.8rem;
+        font-weight: 700;
+        color: white;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        margin-bottom: 8px;
+    }
+
+    .header p {
+        font-size: 1.1rem;
+        color: rgba(255,255,255,0.9);
+        font-weight: 400;
+    }
+
+    .upload-section {
+        margin-bottom: 30px;
+    }
+
+    .drop-zone {
+        border: 3px dashed rgba(255,255,255,0.4);
+        border-radius: 20px;
+        padding: 50px 30px;
+        text-align: center;
+        background: rgba(255,255,255,0.1);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+        border-color: rgba(255,255,255,0.8);
+        background: rgba(255,255,255,0.2);
+        transform: translateY(-2px);
+    }
+
+    .drop-zone i {
+        font-size: 3rem;
+        color: white;
+        margin-bottom: 15px;
+    }
+
+    .drop-zone h3 {
+        font-size: 1.4rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: white;
+    }
+
+    .drop-zone p {
+        color: rgba(255,255,255,0.8);
+        font-size: 1rem;
+    }
+
+    .file-input {
+        display: none;
+    }
+
+    .loading {
+        display: none;
+        text-align: center;
+        padding: 40px;
+        background: rgba(255,255,255,0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        margin-bottom: 30px;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255,255,255,0.3);
+        border-top: 3px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 15px;
+    }
+
+    .loading h3 {
+        color: white;
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .loading p {
+        color: rgba(255,255,255,0.8);
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .results {
+        display: none;
+    }
+
+    .image-comparison {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .image-container {
+        background: rgba(255,255,255,0.95);
+        border-radius: 15px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+
+    .image-container h3 {
+        margin-bottom: 15px;
+        color: #2d3748;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .image-container img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .dashboard {
+        background: rgba(255,255,255,0.95);
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+
+    .dashboard h2 {
+        text-align: center;
+        margin-bottom: 25px;
+        color: #2d3748;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    .stats-container {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 15px;
+        background: #f7fafc;
+        border-radius: 10px;
+        border-left: 4px solid;
+    }
+
+    .stat-item.urban { border-left-color: #4a5568; }
+    .stat-item.agriculture { border-left-color: #d69e2e; }
+    .stat-item.rangeland { border-left-color: #9f7aea; }
+    .stat-item.forest { border-left-color: #38a169; }
+    .stat-item.water { border-left-color: #3182ce; }
+    .stat-item.barren { border-left-color: #e53e3e; }
+
+    .stat-label {
+        font-weight: 500;
+        color: #2d3748;
+    }
+
+    .stat-value {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: #2d3748;
+    }
+
+    .chart-container {
+        max-width: 300px;
+        margin: 0 auto;
+    }
+
+    .btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 25px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        margin: 15px;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .error {
+        background: rgba(255, 255, 255, 0.9);
+        color: #e53e3e;
+        padding: 15px;
+        border-radius: 10px;
+        margin: 15px 0;
+        display: none;
+        border-left: 4px solid #e53e3e;
+    }
+
+    @media (max-width: 768px) {
+        .header h1 {
+            font-size: 2.2rem;
+        }
+        
+        .image-comparison {
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+        
+        .drop-zone {
+            padding: 40px 20px;
+        }
+    }
+</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-satellite"></i> Land Cover AI</h1>
+            <p>Analyse intelligente des images satellitaires</p>
+        </div>
+
+        <div class="upload-section">
+        <div class="drop-zone" id="dropZone">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <h3>Glissez votre image ici</h3>
+            <p>ou cliquez pour parcourir (PNG, JPG, JPEG)</p>
+            <input type="file" id="fileInput" class="file-input" accept=".png,.jpg,.jpeg">
+        </div>
+        <div class="error" id="errorMessage"></div>
+    </div>
+
+    <div class="loading" id="loadingSection">
+        <div class="spinner"></div>
+        <h3>Analyse en cours...</h3>
+        <p>Traitement de votre image satellitaire</p>
+    </div>
+
+    <div class="results" id="resultsSection">
+        <div class="image-comparison">
+            <div class="image-container">
+                <h3><i class="fas fa-image"></i> Image Originale</h3>
+                <img id="originalImage" alt="Original Image">
+            </div>
+            <div class="image-container">
+                <h3><i class="fas fa-map"></i> Segmentation</h3>
+                <img id="resultImage" alt="Segmentation Result">
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <h2><i class="fas fa-chart-bar"></i> Analyse des Surfaces</h2>
+            
+            <div class="stats-container" id="statsContainer">
+                <!-- Stats populated by JavaScript -->
+            </div>
+
+            <div class="chart-container">
+                <canvas id="pieChart" width="300" height="150"></canvas>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 25px;">
+            <button class="btn" onclick="resetApp()">
+                <i class="fas fa-redo"></i> Nouvelle Analyse
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const loadingSection = document.getElementById('loadingSection');
+    const resultsSection = document.getElementById('resultsSection');
+    const errorMessage = document.getElementById('errorMessage');
+    const uploadSection = document.querySelector('.upload-section');
+
+    const CLASS_COLORS = {
+        'Urban': '#4a5568',
+        'Agriculture': '#d69e2e',
+        'Rangeland': '#9f7aea',
+        'Forest': '#38a169',
+        'Water': '#3182ce',
+        'Barren': '#e53e3e'
+    };
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', handleDragOver);
+    dropZone.addEventListener('dragleave', handleDragLeave);
+    dropZone.addEventListener('drop', handleDrop);
+    fileInput.addEventListener('change', handleFileSelect);
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    }
+
+    function handleDragLeave(e) {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            processFile(files[0]);
+        }
+    }
+
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (file) {
+            processFile(file);
+        }
+    }
+
+    function processFile(file) {
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+        if (!allowedTypes.includes(file.type)) {
+            showError('Veuillez sélectionner une image valide (PNG, JPG, JPEG)');
+            return;
+        }
+
+        if (file.size > 16 * 1024 * 1024) {
+            showError('La taille du fichier doit être inférieure à 16MB');
+            return;
+        }
+
+        uploadImage(file);
+    }
+
+    function uploadImage(file) {
+        const formData = new FormData();
+        formData.append('image', file);
+
+        uploadSection.style.display = 'none';
+        loadingSection.style.display = 'block';
+        hideError();
+
+        fetch('/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayResults(data);
+            } else {
+                showError(data.error || 'Erreur de traitement');
+                resetToUpload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showError('Erreur réseau. Veuillez réessayer.');
+            resetToUpload();
+        });
+    }
+
+    function displayResults(data) {
+        loadingSection.style.display = 'none';
+        
+        document.getElementById('originalImage').src = 'data:image/png;base64,' + data.original_image;
+        document.getElementById('resultImage').src = 'data:image/png;base64,' + data.result_image;
+        
+        displayStatistics(data.statistics);
+        resultsSection.style.display = 'block';
+    }
+
+    function displayStatistics(stats) {
+        const statsContainer = document.getElementById('statsContainer');
+        statsContainer.innerHTML = '';
+
+        stats.forEach(stat => {
+            if (stat.percentage > 0) {
+                const item = document.createElement('div');
+                item.className = `stat-item ${stat.class_name.toLowerCase()}`;
+                item.innerHTML = `
+                    <span class="stat-label">${stat.class_name}</span>
+                    <span class="stat-value">${stat.percentage}%</span>
+                `;
+                statsContainer.appendChild(item);
+            }
+        });
+
+        createPieChart(stats);
+    }
+
+    function createPieChart(stats) {
+        const ctx = document.getElementById('pieChart').getContext('2d');
+        
+        const filteredStats = stats.filter(stat => stat.percentage > 0);
+        const labels = filteredStats.map(stat => stat.class_name);
+        const data = filteredStats.map(stat => stat.percentage);
+        const colors = filteredStats.map(stat => CLASS_COLORS[stat.class_name]);
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: colors,
+                    borderWidth: 0,
+                    cutout: '60%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+
+    function showError(message) {
+        errorMessage.textContent = message;
+        errorMessage.style.display = 'block';
+    }
+
+    function hideError() {
+        errorMessage.style.display = 'none';
+    }
+
+    function resetToUpload() {
+        loadingSection.style.display = 'none';
+        uploadSection.style.display = 'block';
+    }
+
+    function resetApp() {
+        resultsSection.style.display = 'none';
+        uploadSection.style.display = 'block';
+        fileInput.value = '';
+        hideError();
+    }
+</script>
+</body>
+</html>
